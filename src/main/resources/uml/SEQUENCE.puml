@@ -1,0 +1,113 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+skinparam sequenceMessageAlign center
+skinparam maxmessagesize 250
+hide footbox
+
+'defined participants'
+actor User
+participant JoinEventRequestView as ui
+participant FormProcessPayload as fpp
+participant FormController as fc
+participant FormService as fs
+participant UserRolesRepository as urr
+participant UserEventRepository as uer
+participant FormResultRepository as frr
+database Database
+
+'Flow'
+
+activate User
+User -> ui: Click accept icon on a record
+activate ui
+ui -> fpp: init payload
+activate fpp
+fpp -> fc: POST /form/event-accept
+deactivate fpp
+activate fc
+fc -> fs: call acceptJoinEvent()
+activate fs
+fs -> fs: validateFormProcess()
+alt#LightGray #LightGreen has no error
+    fs -> urr: call findByUserAndOrganization()
+    activate urr
+    urr -> Database: execute query
+    deactivate urr
+    activate Database
+    Database --> fs: return user role by user id and findByUserAndOrganization
+
+    alt#LightGray #Pink user role exist
+        alt#LightGray #LightGreen user role has getEventOnly is true
+            fs -> uer: call existsByTblUserIdAndTblEventId()
+            activate uer
+            uer -> Database: execute query
+            deactivate uer
+            Database --> fs: return true if exist user in event
+            alt#LightGray #Pink user has already in event
+                fs --> fc: return ZRuntimeException with error code MEMBER_OF_EVENT
+                fc --> ui: response with status 400, error code MEMBER_OF_EVENT
+                ui --> User: show error dialog with message map MEMBER_OF_EVENT
+            else #Orange callobj's role diff with uer role entity's role
+                fs --> fc: return ZRuntimeException with error code MEMBER_OF_EVENT_DIFF_ROLE
+                fc --> ui: response with status 400, error code MEMBER_OF_EVENT_DIFF_ROLE
+                ui --> User: show error dialog with message map MEMBER_OF_EVENT_DIFF_ROLE
+            else #LightGreen pass validate
+                fs -> frr: call updateFormResultSetStatusForUserAndForm()
+                activate frr
+                frr -> Database: execute query
+                deactivate frr
+                Database --> fs: return updated entity
+
+                fs -> uer: call save()
+                activate uer
+                uer -> Database: execute query
+                deactivate uer
+                Database --> fs: return updated entity
+
+                fs --> fc: return updated data
+                fc --> ui: response with status 200
+                ui --> User: show dialog with message approve successfully
+
+            end
+
+        else #Pink user role has getEventOnly not equal true
+            fs --> fc: return ZRuntimeException with error code MEMBER_OF_ORG
+            fc --> ui: response with status 400, error code MEMBER_OF_ORG
+            ui --> User: show error dialog with message map MEMBER_OF_ORG
+            deactivate ui
+        end
+    else #LightGreen user role empty
+        fs -> urr: call save
+        activate urr
+        urr -> Database: execute query
+        deactivate urr
+        Database --> fs: return updated entity
+        deactivate Database
+        fs -> frr: call updateFormResultSetStatusForUserAndForm()
+        activate frr
+        frr -> Database: execute query
+        deactivate frr
+        Database --> fs: return updated entity
+
+        fs -> uer: call save()
+        activate uer
+        uer -> Database: execute query
+        deactivate uer
+        Database --> fs: return updated entity
+
+        fs --> fc: return updated data
+        fc --> ui: response with status 200
+        ui --> User: show dialog with message approve successfully
+    end
+
+else #Pink has error
+    fs --> fc: return ZRuntimeException with error code
+    deactivate fs
+    fc --> ui: response with status 400
+    deactivate fc
+    ui --> User: show error dialog with message map code
+    deactivate ui
+
+end
+
+@enduml

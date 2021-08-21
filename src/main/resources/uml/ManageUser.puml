@@ -1,0 +1,16 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+class UserController extends RestController{
+   - hieucak():int
+   - userService: UserService
+}
+
+
+interface UserService{
+
+}
+UserController "1" o--> "1"UserService
+
+
+@enduml

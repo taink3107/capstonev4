@@ -1,0 +1,66 @@
+@startuml
+'Define class'
+class ControllerModal{
+ -logger: Logger
+ #status : HttpStatus
+ #body: Map<String,Object>
+ -responseData: HttpResponseData
+ #Success(Object): void
+}
+class Pagination{
++getPageableFromParam(Map<String, String>, Sort.Direction, String...): Pageable
++hibernatePaging(Map<String, String>, List, String...)
++ hibernatePaging(Map<String, String>, List, Long, String...)
++hibernatePaging(Pageable, List, Long)
+}
+class RoleController extends ControllerModal{
+    -service: BlogCategoryService
+    +advanceSearch(Map<String,String>): Page
+    +create(BlogCategoryPayload): ResponseEntity
+    +update(BlogCategoryPayload): ResponseEntity
+    +findAll(): ResponseEntity
+    +find(long):ResponseEntity
+    +delete(long):ResponseEntity
+}
+interface RoleService
+class RoleServiceImpl implements RoleService{
+-roleRepository: RoleRepository
+-roleActivityService: RoleActivityService
+-userRolesRepository: UserRolesRepository
+-numberRangeRepository: NumberRangeRepository
+-entityManager: EntityManager
+-pagination: Pagination
+    +advanceSearch(Map<String,String>): Page
+    +create(RoleAndRoleActivityPayload): TblRolesEntity
+    +update(RoleAndRoleActivity): TblRoleEntity
+    +findAll(): List<TblRolesEntity>
+    +findById(int):TblRolesEntity
+    +delete(Long):void
+    +getById(Long): RoleAndRoleActivity
+    +getRoleActivitiesByRole(long): List<RoleActivity>
+}
+interface JpaRepository
+interface UserRolesRepository extends JpaRepository
+interface RolesRepository extends JpaRepository
+interface NumberRangeRepository extends JpaRepository
+interface RoleActivityService
+class RoleActivityServiceImpl implements RoleActivityService{
+-roleActivityRepository : RolesActivitiesRepository
+-template: SimpMessagingTemplate
+-categoryService: CategoryService
+-userRoleService : UserRoleService
+-buildRoleActivities(List<TblRolesActivitiesEntity>) : List<RoleActivity>
++deleteActivities(long) : void
++getByRoleId(long): List<RoleActivity>
++setActivities(List<RoleActivity>,long,LoginUser) : void
++updateActivities(List<RoleActivity>,long,LoginUser): void
++validatePermissionByFunctionActivity(int,RoleActivity,LoginUser) : TblFunctionsActivitiesEntity
+}
+RoleController "1" *--> "1" RoleService
+RoleServiceImpl "1" *--> "1" RoleActivityService
+RoleServiceImpl "1" *--> "1" UserRolesRepository
+RoleServiceImpl "1" *--> "1" RolesRepository
+RoleServiceImpl "1" *--> "1" NumberRangeRepository
+RoleServiceImpl "1" *--> "1" Pagination
+
+@enduml
